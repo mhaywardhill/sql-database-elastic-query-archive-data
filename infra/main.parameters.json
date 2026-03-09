@@ -5,12 +5,6 @@
     "sqlServerName": {
       "value": "sqlsrv-demo-001"
     },
-    "sqlAdminLogin": {
-      "value": "sqladminuser"
-    },
-    "sqlAdminPassword": {
-      "value": "REPLACE_WITH_SECURE_PASSWORD"
-    },
     "databaseOneName": {
       "value": "appdb-primary"
     },

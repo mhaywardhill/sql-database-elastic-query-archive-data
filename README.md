@@ -10,15 +10,17 @@ This repository provides:
 - Automated deployment via shell script and environment variables
 - SQL scripts to configure external tables and move data from primary to archive
 - Codespaces startup automation for Azure CLI availability
+- SQL Server configured for Microsoft Entra ID-only authentication
+- SQL server creation without SQL admin credentials
 
 ## Repository Structure
 
-- infra/main.bicep: Deploys one SQL logical server and two SQL databases
+- infra/main.bicep: Deploys two SQL databases on an existing SQL logical server
 - infra/main.parameters.json: Example deployment parameters
-- infra/deploy.sh: Deployment helper script (creates resource group if missing)
-- sql/elastic-query/01-archive-setup.sql: Creates archive table and user in appdb-archive
-- sql/elastic-query/02-primary-external-table-setup.sql: Creates external objects in appdb-primary
-- sql/elastic-query/03-primary-archive-insert.sql: Inserts archive data through external table
+- infra/deploy.sh: Creates Entra-only SQL server (if missing) and deploys databases
+- sql/elastic-query/01-archive-setup.sql: Creates archive table in appdb-archive
+- sql/elastic-query/02-primary-external-table-setup.sql: Creates managed identity credential and external objects in appdb-archive pointing to appdb-primary
+- sql/elastic-query/03-primary-archive-insert.sql: Inserts archive data in appdb-archive from external table
 - .devcontainer/devcontainer.json: Codespaces post-start configuration
 - .devcontainer/post-start.sh: Ensures Azure CLI is installed at startup
 
@@ -62,8 +64,17 @@ Export required variables:
 ```bash
 export RESOURCE_GROUP="<your-resource-group>"
 export SQL_SERVER_NAME="sqlsrv-demo-001"
-export SQL_ADMIN_LOGIN="sqladminuser"
-export SQL_ADMIN_PASSWORD="<strong-password>"
+export ENTRA_ADMIN_OBJECT_ID="<entra-admin-object-id>"
+```
+
+Optional override:
+
+```bash
+# If omitted, deploy.sh resolves this automatically from ENTRA_ADMIN_OBJECT_ID
+export ENTRA_ADMIN_LOGIN="<entra-admin-upn-or-display-name>"
+
+# Optional only for cross-tenant scenarios
+export ENTRA_TENANT_ID="<entra-tenant-id>"
 ```
 
 Optional variables:
@@ -73,7 +84,6 @@ export DATABASE_ONE_NAME="appdb-primary"
 export DATABASE_TWO_NAME="appdb-archive"
 export DATABASE_SKU_NAME="S0"
 export LOCATION="uksouth"
-export RESOURCE_GROUP_LOCATION="uksouth"
 ```
 
 Deploy:
@@ -85,8 +95,13 @@ Deploy:
 Notes:
 
 - If the resource group does not exist, infra/deploy.sh creates it.
-- LOCATION controls deployment location passed to Bicep.
-- RESOURCE_GROUP_LOCATION is used when creating a missing resource group.
+- LOCATION controls SQL server and database deployment location.
+- If LOCATION is not set, the script uses existing resource group location when available; otherwise it defaults to uksouth.
+- Entra tenant ID defaults automatically to the current deployment tenant.
+- ENTRA_ADMIN_LOGIN is optional; the script resolves it from ENTRA_ADMIN_OBJECT_ID when possible.
+- Use a User, Group, or Application object ID for ENTRA_ADMIN_OBJECT_ID.
+- SQL server is created using az sql server create with --enable-ad-only-auth.
+- SQL authentication is disabled on the logical server (Entra ID-only).
 
 ## Elastic Query Configuration and Archiving
 
@@ -94,15 +109,18 @@ Run the scripts in this order:
 
 1. Execute sql/elastic-query/01-archive-setup.sql on appdb-archive.
 2. Update placeholders in sql/elastic-query/02-primary-external-table-setup.sql.
-3. Execute sql/elastic-query/02-primary-external-table-setup.sql on appdb-primary.
-4. Execute sql/elastic-query/03-primary-archive-insert.sql on appdb-primary.
+3. Execute sql/elastic-query/02-primary-external-table-setup.sql on appdb-archive.
+4. Execute sql/elastic-query/03-primary-archive-insert.sql on appdb-archive.
 
 Placeholders you must replace:
 
-- In 01-archive-setup.sql: <REPLACE_WITH_STRONG_PASSWORD>
-- In 02-primary-external-table-setup.sql: <REPLACE_WITH_MASTER_KEY_PASSWORD>
-- In 02-primary-external-table-setup.sql: <REPLACE_WITH_ARCHIVE_WRITER_PASSWORD>
 - In 02-primary-external-table-setup.sql: <your-sql-server-name>.database.windows.net
+
+Entra access requirement:
+
+- The identity used by PrimaryDbCredential in appdb-archive must have SELECT rights on dbo.OrdersCurrent in appdb-primary.
+- The default script uses a managed identity credential: IDENTITY = 'Managed Identity'.
+- Recommended approach: use the SQL server system-assigned managed identity and grant it rights in appdb-primary.
 
 ## Security Guidance
 

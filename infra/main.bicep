@@ -6,13 +6,6 @@ param location string = resourceGroup().location
 @description('Name of the Azure SQL logical server.')
 param sqlServerName string
 
-@description('Administrator username for the SQL logical server.')
-param sqlAdminLogin string
-
-@secure()
-@description('Administrator password for the SQL logical server.')
-param sqlAdminPassword string
-
 @description('Name of the first SQL database.')
 param databaseOneName string = 'appdb-primary'
 
@@ -22,15 +15,8 @@ param databaseTwoName string = 'appdb-archive'
 @description('SQL Database SKU name. Example: Basic, S0, S1, GP_S_Gen5_1.')
 param databaseSkuName string = 'S0'
 
-resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
+resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' existing = {
   name: sqlServerName
-  location: location
-  properties: {
-    administratorLogin: sqlAdminLogin
-    administratorLoginPassword: sqlAdminPassword
-    publicNetworkAccess: 'Enabled'
-    minimalTlsVersion: '1.2'
-  }
 }
 
 resource databaseOne 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
