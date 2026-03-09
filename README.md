@@ -10,14 +10,16 @@ This repository provides:
 - Automated deployment via shell script and environment variables
 - SQL scripts to configure external tables and move data from primary to archive
 - Codespaces startup automation for Azure CLI availability
-- SQL Server configured for Microsoft Entra ID-only authentication
-- SQL server creation without SQL admin credentials
+- SQL Server configured for SQL authentication
+- Modular Bicep templates for SQL server and databases
 
 ## Repository Structure
 
-- infra/main.bicep: Deploys two SQL databases on an existing SQL logical server
+- infra/main.bicep: Orchestration template for SQL server and databases
 - infra/main.parameters.json: Example deployment parameters
-- infra/deploy.sh: Creates Entra-only SQL server (if missing) and deploys databases
+- infra/deploy.sh: Deploys SQL-auth SQL server and databases via Bicep
+- infra/modules/sqlServer.bicep: SQL logical server module
+- infra/modules/sqlDatabase.bicep: SQL database module
 - sql/elastic-query/01-primary-orderscurrent-setup.sql: Creates source table in appdb-primary
 - sql/elastic-query/02-primary-elastic-reader-setup.sql: Creates contained SQL user in appdb-primary for Elastic Query read access
 - sql/elastic-query/03-archive-setup.sql: Creates archive table in appdb-archive
@@ -66,17 +68,8 @@ Export required variables:
 ```bash
 export RESOURCE_GROUP="<your-resource-group>"
 export SQL_SERVER_NAME="sqlsrv-demo-001"
-export ENTRA_ADMIN_OBJECT_ID="<entra-admin-object-id>"
-```
-
-Optional override:
-
-```bash
-# If omitted, deploy.sh resolves this automatically from ENTRA_ADMIN_OBJECT_ID
-export ENTRA_ADMIN_LOGIN="<entra-admin-upn-or-display-name>"
-
-# Optional only for cross-tenant scenarios
-export ENTRA_TENANT_ID="<entra-tenant-id>"
+export SQL_ADMIN_LOGIN="<sql-admin-login>"
+export SQL_ADMIN_PASSWORD="<strong-sql-admin-password>"
 ```
 
 Optional variables:
@@ -99,11 +92,8 @@ Notes:
 - If the resource group does not exist, infra/deploy.sh creates it.
 - LOCATION controls SQL server and database deployment location.
 - If LOCATION is not set, the script uses existing resource group location when available; otherwise it defaults to uksouth.
-- Entra tenant ID defaults automatically to the current deployment tenant.
-- ENTRA_ADMIN_LOGIN is optional; the script resolves it from ENTRA_ADMIN_OBJECT_ID when possible.
-- Use a User, Group, or Application object ID for ENTRA_ADMIN_OBJECT_ID.
-- SQL server is created using az sql server create with --enable-ad-only-auth.
-- SQL authentication is disabled on the logical server (Entra ID-only).
+- SQL server is deployed via infra/main.bicep using module infra/modules/sqlServer.bicep.
+- SQL authentication is enabled on the logical server.
 
 ## Elastic Query Configuration and Archiving
 

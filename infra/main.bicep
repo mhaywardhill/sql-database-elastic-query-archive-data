@@ -6,6 +6,13 @@ param location string = resourceGroup().location
 @description('Name of the Azure SQL logical server.')
 param sqlServerName string
 
+@description('SQL administrator login')
+param sqlAdminLogin string
+
+@description('SQL administrator password')
+@secure()
+param sqlAdminPassword string
+
 @description('Name of the first SQL database.')
 param databaseOneName string = 'appdb-primary'
 
@@ -15,34 +22,60 @@ param databaseTwoName string = 'appdb-archive'
 @description('SQL Database SKU name. Example: Basic, S0, S1, GP_S_Gen5_1.')
 param databaseSkuName string = 'S0'
 
-resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' existing = {
+@description('Allow Azure services to access this server (required for elastic query)')
+param allowAzureServices bool = true
+
+module sqlServer 'modules/sqlServer.bicep' = {
+  name: 'deploy-sql-server'
+  params: {
+    sqlServerName: sqlServerName
+    location: location
+    adminLogin: sqlAdminLogin
+    adminPassword: sqlAdminPassword
+    allowAzureServices: allowAzureServices
+  }
+}
+
+module databaseOne 'modules/sqlDatabase.bicep' = {
+  name: 'deploy-database-one'
+  params: {
+    sqlServerName: sqlServerName
+    databaseName: databaseOneName
+    location: location
+    databaseSkuName: databaseSkuName
+  }
+  dependsOn: [
+    sqlServer
+  ]
+}
+
+module databaseTwo 'modules/sqlDatabase.bicep' = {
+  name: 'deploy-database-two'
+  params: {
+    sqlServerName: sqlServerName
+    databaseName: databaseTwoName
+    location: location
+    databaseSkuName: databaseSkuName
+  }
+  dependsOn: [
+    sqlServer
+  ]
+}
+
+resource sqlServerRef 'Microsoft.Sql/servers@2023-08-01-preview' existing = {
   name: sqlServerName
 }
 
-resource databaseOne 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
+resource databaseOneRef 'Microsoft.Sql/servers/databases@2023-08-01-preview' existing = {
   name: databaseOneName
-  parent: sqlServer
-  location: location
-  sku: {
-    name: databaseSkuName
-  }
-  properties: {
-    collation: 'SQL_Latin1_General_CP1_CI_AS'
-  }
+  parent: sqlServerRef
 }
 
-resource databaseTwo 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
+resource databaseTwoRef 'Microsoft.Sql/servers/databases@2023-08-01-preview' existing = {
   name: databaseTwoName
-  parent: sqlServer
-  location: location
-  sku: {
-    name: databaseSkuName
-  }
-  properties: {
-    collation: 'SQL_Latin1_General_CP1_CI_AS'
-  }
+  parent: sqlServerRef
 }
 
-output sqlServerResourceId string = sqlServer.id
-output databaseOneResourceId string = databaseOne.id
-output databaseTwoResourceId string = databaseTwo.id
+output sqlServerResourceId string = sqlServerRef.id
+output databaseOneResourceId string = databaseOneRef.id
+output databaseTwoResourceId string = databaseTwoRef.id
