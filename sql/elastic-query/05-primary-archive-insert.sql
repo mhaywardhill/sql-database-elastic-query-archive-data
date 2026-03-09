@@ -9,19 +9,16 @@ INSERT INTO dbo.OrderArchive
   OrderId,
   CustomerId,
   OrderDateUtc,
-  TotalAmount,
-  ArchivedOnUtc
+  TotalAmount
 )
 SELECT
   p.OrderId,
   p.CustomerId,
   p.OrderDateUtc,
-  p.TotalAmount,
-  SYSUTCDATETIME()
+  p.TotalAmount
 FROM dbo.OrdersCurrentExt AS p
 WHERE p.OrderDateUtc < DATEADD(day, -30, SYSUTCDATETIME())
-  AND p.ArchivedOnUtc IS NULL
-  AND NOT EXISTS
+AND NOT EXISTS
   (
     SELECT 1
     FROM dbo.OrderArchive AS a

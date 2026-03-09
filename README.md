@@ -13,20 +13,26 @@ This repository provides:
 - SQL Server configured for SQL authentication
 - Modular Bicep templates for SQL server and databases
 
-## Repository Structure
+## Project Structure
 
-- infra/main.bicep: Orchestration template for SQL server and databases
-- infra/main.parameters.json: Example deployment parameters
-- infra/deploy.sh: Deploys SQL-auth SQL server and databases via Bicep
-- infra/modules/sqlServer.bicep: SQL logical server module
-- infra/modules/sqlDatabase.bicep: SQL database module
-- sql/elastic-query/01-primary-orderscurrent-setup.sql: Creates source table in appdb-primary
-- sql/elastic-query/02-primary-elastic-reader-setup.sql: Creates contained SQL user in appdb-primary for Elastic Query read access
-- sql/elastic-query/03-archive-setup.sql: Creates archive table in appdb-archive
-- sql/elastic-query/04-primary-external-table-setup.sql: Creates SQL credential and external table in appdb-archive that references dbo.OrdersCurrent in appdb-primary
-- sql/elastic-query/05-primary-archive-insert.sql: Inserts archive data in appdb-archive from external table
-- .devcontainer/devcontainer.json: Codespaces post-start configuration
-- .devcontainer/post-start.sh: Ensures Azure CLI is installed at startup
+```text
+infra/
+├── main.bicep                                 # Orchestration template
+├── main.parameters.json                       # Example parameter values
+├── deploy.sh                                  # Deployment script
+└── modules/
+	├── sqlServer.bicep                        # SQL logical server module
+	└── sqlDatabase.bicep                      # SQL database module
+sql/
+└── elastic-query/
+	├── 01-primary-orderscurrent-setup.sql     # Create source table + sample rows (appdb-primary)
+	├── 02-primary-elastic-reader-setup.sql    # Create elastic query user + grant SELECT (appdb-primary)
+	├── 03-archive-setup.sql                   # Create local archive table (appdb-archive)
+	├── 04-primary-external-table-setup.sql    # Create credential, external data source, external table
+	└── 05-primary-archive-insert.sql          # Insert archive data from external table
+README.md                                      # Setup and usage guidance
+LICENSE                                        # MIT license
+```
 
 ## Prerequisites
 

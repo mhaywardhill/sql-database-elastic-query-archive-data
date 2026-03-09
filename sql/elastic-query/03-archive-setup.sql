@@ -11,7 +11,6 @@ BEGIN
     CustomerId bigint NOT NULL,
     OrderDateUtc datetime2(0) NOT NULL,
     TotalAmount decimal(18,2) NOT NULL,
-    ArchivedOnUtc datetime2(0) NOT NULL,
     CONSTRAINT PK_OrderArchive PRIMARY KEY (OrderId)
   );
 END;

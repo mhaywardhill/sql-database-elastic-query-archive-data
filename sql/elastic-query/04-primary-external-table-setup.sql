@@ -53,10 +53,8 @@ GO
 
 CREATE DATABASE SCOPED CREDENTIAL PrimaryDbCredential
 WITH
-(
   IDENTITY = '<elastic-query-user>',
-  SECRET = '<elastic-query-user-password>'
-);
+  SECRET = '<elastic-query-user-password>';
 GO
 
 CREATE EXTERNAL DATA SOURCE PrimaryDataSource
@@ -75,7 +73,6 @@ CREATE EXTERNAL TABLE dbo.OrdersCurrentExt
   CustomerId bigint NOT NULL,
   OrderDateUtc datetime2(0) NOT NULL,
   TotalAmount decimal(18,2) NOT NULL,
-  ArchivedOnUtc datetime2(0) NULL
 )
 WITH
 (
