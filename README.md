@@ -123,6 +123,13 @@ Elastic Query credential requirement:
 - appdb-archive must have a database master key before creating a secret-based database scoped credential.
 - The user in PrimaryDbCredential must have SELECT rights on dbo.OrdersCurrent in appdb-primary.
 
+Connectivity requirements (Microsoft guidance):
+
+- Reference article: https://techcommunity.microsoft.com/blog/azuredbsupport/resolve-elastic-query-issues-in-azure-sql-database/3583451
+- SQL authentication is required for this elastic query pattern.
+- Public endpoint must be enabled on the SQL logical server.
+- Enable the option "Allow Azure services and resources to access this server" on the target SQL server.
+
 ## Security Guidance
 
 - Do not commit production secrets to source control.
