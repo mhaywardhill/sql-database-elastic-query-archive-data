@@ -1,0 +1,12 @@
+{
+  "name": "sql-database-elastic-query-archive-data",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.azure-account",
+        "ms-azuretools.vscode-azurecli"
+      ]
+    }
+  }
+}
