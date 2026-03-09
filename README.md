@@ -18,9 +18,11 @@ This repository provides:
 - infra/main.bicep: Deploys two SQL databases on an existing SQL logical server
 - infra/main.parameters.json: Example deployment parameters
 - infra/deploy.sh: Creates Entra-only SQL server (if missing) and deploys databases
-- sql/elastic-query/01-archive-setup.sql: Creates archive table in appdb-archive
-- sql/elastic-query/02-primary-external-table-setup.sql: Creates managed identity credential and external objects in appdb-archive pointing to appdb-primary
-- sql/elastic-query/03-primary-archive-insert.sql: Inserts archive data in appdb-archive from external table
+- sql/elastic-query/01-primary-orderscurrent-setup.sql: Creates source table in appdb-primary
+- sql/elastic-query/02-primary-elastic-reader-setup.sql: Creates contained SQL user in appdb-primary for Elastic Query read access
+- sql/elastic-query/03-archive-setup.sql: Creates archive table in appdb-archive
+- sql/elastic-query/04-primary-external-table-setup.sql: Creates SQL credential and external table in appdb-archive that references dbo.OrdersCurrent in appdb-primary
+- sql/elastic-query/05-primary-archive-insert.sql: Inserts archive data in appdb-archive from external table
 - .devcontainer/devcontainer.json: Codespaces post-start configuration
 - .devcontainer/post-start.sh: Ensures Azure CLI is installed at startup
 
@@ -107,20 +109,23 @@ Notes:
 
 Run the scripts in this order:
 
-1. Execute sql/elastic-query/01-archive-setup.sql on appdb-archive.
-2. Update placeholders in sql/elastic-query/02-primary-external-table-setup.sql.
-3. Execute sql/elastic-query/02-primary-external-table-setup.sql on appdb-archive.
-4. Execute sql/elastic-query/03-primary-archive-insert.sql on appdb-archive.
+1. Execute sql/elastic-query/01-primary-orderscurrent-setup.sql on appdb-primary.
+2. Execute sql/elastic-query/02-primary-elastic-reader-setup.sql on appdb-primary.
+3. Execute sql/elastic-query/03-archive-setup.sql on appdb-archive.
+4. Update placeholders in sql/elastic-query/04-primary-external-table-setup.sql.
+5. Execute sql/elastic-query/04-primary-external-table-setup.sql on appdb-archive.
+6. Execute sql/elastic-query/05-primary-archive-insert.sql on appdb-archive.
 
 Placeholders you must replace:
 
-- In 02-primary-external-table-setup.sql: <your-sql-server-name>.database.windows.net
+- In 02-primary-elastic-reader-setup.sql: <elastic-query-user>, <elastic-query-user-password>
+- In 04-primary-external-table-setup.sql: <archive-master-key-password>, <elastic-query-user>, <elastic-query-user-password>, <your-sql-server-name>.database.windows.net
 
-Entra access requirement:
+Elastic Query credential requirement:
 
-- The identity used by PrimaryDbCredential in appdb-archive must have SELECT rights on dbo.OrdersCurrent in appdb-primary.
-- The default script uses a managed identity credential: IDENTITY = 'Managed Identity'.
-- Recommended approach: use the SQL server system-assigned managed identity and grant it rights in appdb-primary.
+- For TYPE = RDBMS external data sources, PrimaryDbCredential must include IDENTITY and SECRET.
+- appdb-archive must have a database master key before creating a secret-based database scoped credential.
+- The user in PrimaryDbCredential must have SELECT rights on dbo.OrdersCurrent in appdb-primary.
 
 ## Security Guidance
 
