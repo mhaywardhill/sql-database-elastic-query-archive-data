@@ -1,27 +1,47 @@
-# sql-database-elastic-query-archive-data
+# SQL Database Elastic Query Archive Data
 
-## Codespaces Azure CLI Setup
+Reference implementation for deploying Azure SQL resources and configuring Elastic Query to archive data from a primary database into an archive database.
 
-This repo includes automatic Azure CLI setup for Codespaces.
+## Overview
 
-- Startup script: `.devcontainer/post-start.sh`
-- Dev container config: `.devcontainer/devcontainer.json`
+This repository provides:
 
-### Current codespace (run now)
+- Infrastructure as Code using Bicep
+- Automated deployment via shell script and environment variables
+- SQL scripts to configure external tables and move data from primary to archive
+- Codespaces startup automation for Azure CLI availability
+
+## Repository Structure
+
+- infra/main.bicep: Deploys one SQL logical server and two SQL databases
+- infra/main.parameters.json: Example deployment parameters
+- infra/deploy.sh: Deployment helper script (creates resource group if missing)
+- sql/elastic-query/01-archive-setup.sql: Creates archive table and user in appdb-archive
+- sql/elastic-query/02-primary-external-table-setup.sql: Creates external objects in appdb-primary
+- sql/elastic-query/03-primary-archive-insert.sql: Inserts archive data through external table
+- .devcontainer/devcontainer.json: Codespaces post-start configuration
+- .devcontainer/post-start.sh: Ensures Azure CLI is installed at startup
+
+## Prerequisites
+
+- Azure subscription with permissions to create resource groups and SQL resources
+- Azure CLI
+- SQL access to both databases with sufficient permissions to create users, credentials, and external objects
+
+## Codespaces Setup
+
+Codespaces startup automation is configured to run .devcontainer/post-start.sh.
+
+### Verify in current session
 
 ```bash
 bash .devcontainer/post-start.sh
 az version --query '"azure-cli"' -o tsv
 ```
 
-### Automatic on future starts
-
-1. Rebuild the Codespace once so the new devcontainer config is applied.
-2. On each start, postStartCommand runs `.devcontainer/post-start.sh` automatically.
-
 ### Optional automatic Azure login
 
-If these env vars are present, startup will run service principal login automatically:
+If these environment variables are set, the post-start script attempts service principal login:
 
 ```bash
 AZURE_CLIENT_ID
@@ -29,28 +49,15 @@ AZURE_CLIENT_SECRET
 AZURE_TENANT_ID
 ```
 
-If they are not set, startup skips login and you can still sign in manually:
+If not set, sign in manually:
 
 ```bash
 az login --tenant <tenant-id> --use-device-code
 ```
 
-## Infrastructure (Bicep)
+## Infrastructure Deployment
 
-This repository includes Bicep templates in infra/ to deploy:
-
-- 1 Azure SQL logical server
-- 2 Azure SQL databases on that server
-
-### Files
-
-- infra/main.bicep
-- infra/main.parameters.json
-- infra/deploy.sh
-
-### Deploy with export variables and script
-
-1. Export required variables in your terminal:
+Export required variables:
 
 ```bash
 export RESOURCE_GROUP="<your-resource-group>"
@@ -59,47 +66,46 @@ export SQL_ADMIN_LOGIN="sqladminuser"
 export SQL_ADMIN_PASSWORD="<strong-password>"
 ```
 
-2. Optional variables (defaults shown):
+Optional variables:
 
 ```bash
 export DATABASE_ONE_NAME="appdb-primary"
 export DATABASE_TWO_NAME="appdb-archive"
 export DATABASE_SKU_NAME="S0"
-# Optional: override location (otherwise resource group location is used)
 export LOCATION="uksouth"
+export RESOURCE_GROUP_LOCATION="uksouth"
 ```
 
-3. Run the script:
+Deploy:
 
 ```bash
 ./infra/deploy.sh
 ```
 
-### Notes
+Notes:
 
-- The template uses resourceGroup().location by default.
-- If LOCATION is exported, the deployment uses that value.
+- If the resource group does not exist, infra/deploy.sh creates it.
+- LOCATION controls deployment location passed to Bicep.
+- RESOURCE_GROUP_LOCATION is used when creating a missing resource group.
 
-## Elastic Query Scripts
+## Elastic Query Configuration and Archiving
 
-Scripts are provided to archive data from appdb-primary to appdb-archive using external tables.
+Run the scripts in this order:
 
-### Files
+1. Execute sql/elastic-query/01-archive-setup.sql on appdb-archive.
+2. Update placeholders in sql/elastic-query/02-primary-external-table-setup.sql.
+3. Execute sql/elastic-query/02-primary-external-table-setup.sql on appdb-primary.
+4. Execute sql/elastic-query/03-primary-archive-insert.sql on appdb-primary.
 
-- sql/elastic-query/01-archive-setup.sql
-- sql/elastic-query/02-primary-external-table-setup.sql
-- sql/elastic-query/03-primary-archive-insert.sql
+Placeholders you must replace:
 
-### Run order
+- In 01-archive-setup.sql: <REPLACE_WITH_STRONG_PASSWORD>
+- In 02-primary-external-table-setup.sql: <REPLACE_WITH_MASTER_KEY_PASSWORD>
+- In 02-primary-external-table-setup.sql: <REPLACE_WITH_ARCHIVE_WRITER_PASSWORD>
+- In 02-primary-external-table-setup.sql: <your-sql-server-name>.database.windows.net
 
-1. Run sql/elastic-query/01-archive-setup.sql on appdb-archive.
-2. Edit placeholders in sql/elastic-query/02-primary-external-table-setup.sql.
-3. Run sql/elastic-query/02-primary-external-table-setup.sql on appdb-primary.
-4. Run sql/elastic-query/03-primary-archive-insert.sql on appdb-primary.
+## Security Guidance
 
-### Placeholder values to update
-
-- 01-archive-setup.sql: <REPLACE_WITH_STRONG_PASSWORD>
-- 02-primary-external-table-setup.sql: <REPLACE_WITH_MASTER_KEY_PASSWORD>
-- 02-primary-external-table-setup.sql: <REPLACE_WITH_ARCHIVE_WRITER_PASSWORD>
-- 02-primary-external-table-setup.sql: <your-sql-server-name>.database.windows.net
+- Do not commit production secrets to source control.
+- Use secure password generation and rotation practices.
+- Prefer managed identities and secret stores where possible for production environments.
